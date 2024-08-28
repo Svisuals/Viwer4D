@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple IFC Viewer</title>
+    <title>IFC Viewer with Lighting</title>
     <style>
         body { margin: 0; }
         canvas { display: block; }
@@ -19,6 +19,14 @@
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        // Añadir iluminación a la escena
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Luz ambiental
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Luz direccional
+        directionalLight.position.set(10, 10, 10).normalize();
+        scene.add(directionalLight);
 
         // Cargar el modelo IFC desde la misma carpeta que el archivo HTML
         const loader = new IFC.Loader();
