@@ -3,161 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IFC 4D Viewer</title>
+    <title>Simple IFC Viewer</title>
     <style>
         body { margin: 0; }
         canvas { display: block; }
-        #controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-        }
-        #slider {
-            width: 300px;
-        }
-        #infoPanel {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 250px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            display: none; /* Initially hidden */
-        }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <label for="slider">Timeline:</label>
-        <input type="range" id="slider" min="0" max="100" value="0" step="1">
-        <button id="resetButton">Reset View</button>
-    </div>
-    <div id="infoPanel">
-        <h3>Element Info</h3>
-        <p id="elementInfo">Select an element to see details.</p>
-    </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.143.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ifcjs@0.0.60/dist/ifc.min.js"></script>
     <script>
-        // Configuración de la escena con Three.js
+        // Configuración básica de Three.js
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Cargar el modelo IFC desde la misma carpeta que el HTML
+        // Cargar el modelo IFC desde la misma carpeta que el archivo HTML
         const loader = new IFC.Loader();
-        let model;
-        let dateRange = { min: 0, max: 100 }; // Rango de fechas, para ajustarse después de extraer los datos
 
-        loader.load('Modelo4D.IFC', async function (ifcModel) {
-            model = ifcModel;
-            scene.add(model);
-            await parseIFCData(model);
-            animate();
+        loader.load('Modelo4D.ifc', function (ifcModel) {
+            scene.add(ifcModel); // Agregar el modelo a la escena
+            camera.position.z = 10; // Posicionar la cámara
+            animate(); // Iniciar la animación/renderización
         });
 
-        // Configuración de la posición de la cámara
-        camera.position.z = 10;
-
-        // Crear el control deslizante
-        const slider = document.getElementById('slider');
-        slider.addEventListener('input', function () {
-            const value = parseInt(slider.value, 10);
-            updateModelVisibility(value);
-        });
-
-        // Crear botón de restablecimiento de vista
-        const resetButton = document.getElementById('resetButton');
-        resetButton.addEventListener('click', function () {
-            camera.position.set(0, 0, 10);
-            camera.lookAt(scene.position);
-            renderer.render(scene, camera);
-        });
-
-        // Crear panel de información
-        const infoPanel = document.getElementById('infoPanel');
-        const elementInfo = document.getElementById('elementInfo');
-
-        async function parseIFCData(model) {
-            // Extraer atributos de fecha y determinar el rango de fechas
-            const dates = [];
-            const ifcManager = loader.ifcManager;
-
-            for (const mesh of model.children) {
-                if (mesh.isMesh) {
-                    const expressID = mesh.userData.ifcId;
-                    const dateValue = await getIFCDate(ifcManager, expressID);
-                    if (dateValue) {
-                        const dateTimestamp = new Date(dateValue).getTime();
-                        dates.push(dateTimestamp);
-                        mesh.userData = { date: dateTimestamp };
-                        mesh.on('click', function () {
-                            showElementInfo(mesh);
-                        });
-                    }
-                }
-            }
-
-            // Ajustar el rango de fechas basado en las fechas extraídas
-            dateRange.min = Math.min(...dates);
-            dateRange.max = Math.max(...dates);
-
-            // Actualizar el rango del slider
-            slider.min = 0;
-            slider.max = 100;
-        }
-
-        async function getIFCDate(ifcManager, expressID) {
-            const propertySets = await ifcManager.getPropertySets(expressID);
-            for (const propSet of propertySets) {
-                const propSetName = await ifcManager.getItemProperty(propSet.value, 'Name');
-                if (propSetName.value === 'My_Data') {
-                    for (const prop of propSet.HasProperties) {
-                        const propName = await ifcManager.getItemProperty(prop.value, 'Name');
-                        if (propName.value === 'DATA') {
-                            const dateValue = await ifcManager.getItemProperty(prop.value, 'NominalValue');
-                            return dateValue.value;
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
-        function updateModelVisibility(sliderValue) {
-            if (!model) return;
-
-            // Mapear el valor del slider al rango de fechas
-            const normalizedDate = dateRange.min + (sliderValue / 100) * (dateRange.max - dateRange.min);
-
-            model.traverse(function (child) {
-                if (child.isMesh && child.userData.date !== undefined) {
-                    child.visible = child.userData.date <= normalizedDate;
-                }
-            });
-        }
-
-        function showElementInfo(element) {
-            if (element.userData) {
-                const date = new Date(element.userData.date).toISOString().split('T')[0];
-                elementInfo.innerText = `DATA: ${date}`;
-                infoPanel.style.display = 'block';
-            }
-        }
-
+        // Función de animación/renderización
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
 
-        // Manejar el cambio de tamaño de la ventana
+        // Ajustar el renderizado al redimensionar la ventana
         window.addEventListener('resize', function () {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
