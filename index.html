@@ -117,11 +117,14 @@
         async function getIFCDate(ifcManager, expressID) {
             const propertySets = await ifcManager.getPropertySets(expressID);
             for (const propSet of propertySets) {
-                for (const prop of propSet.HasProperties) {
-                    const propName = await ifcManager.getItemProperty(prop.value, 'Name');
-                    if (propName.value === 'My_Data') {
-                        const dateValue = await ifcManager.getItemProperty(prop.value, 'NominalValue');
-                        return dateValue.value;
+                const propSetName = await ifcManager.getItemProperty(propSet.value, 'Name');
+                if (propSetName.value === 'My_Data') {
+                    for (const prop of propSet.HasProperties) {
+                        const propName = await ifcManager.getItemProperty(prop.value, 'Name');
+                        if (propName.value === 'DATA') {
+                            const dateValue = await ifcManager.getItemProperty(prop.value, 'NominalValue');
+                            return dateValue.value;
+                        }
                     }
                 }
             }
@@ -144,7 +147,7 @@
         function showElementInfo(element) {
             if (element.userData) {
                 const date = new Date(element.userData.date).toISOString().split('T')[0];
-                elementInfo.innerText = `My_Data: ${date}`;
+                elementInfo.innerText = `DATA: ${date}`;
                 infoPanel.style.display = 'block';
             }
         }
