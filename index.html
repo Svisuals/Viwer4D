@@ -56,7 +56,7 @@
         let model;
         let dateRange = { min: 0, max: 100 }; // Rango de fechas, para ajustarse después de extraer los datos
 
-        loader.load('Modelo4D.ifc', async function (ifcModel) {
+        loader.load('Modelo4D.IFC', async function (ifcModel) {
             model = ifcModel;
             scene.add(model);
             await parseIFCData(model);
