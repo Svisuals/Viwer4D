@@ -63,45 +63,9 @@
             }
         }
     </style>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.skypack.dev/three@0.150.1",
-                "web-ifc-three": "https://cdn.skypack.dev/web-ifc-three@0.0.38"
-            }
-        }
-    </script>
-</head>
-<body>
-    <div id="viewers-container">
-        <div class="viewer" id="viewer1">
-            <div id="container1"></div>
-            <div id="slider-container1">
-                <input type="range" id="time-slider1" min="0" max="100" value="0" step="1">
-                <span id="date-label1"></span>
-            </div>
-            <div id="dashboard1">
-                <h3>Área Total Visible</h3>
-                <p id="area-value1">0 m²</p>
-            </div>
-        </div>
-        <div class="viewer" id="viewer2" style="display: none;">
-            <div id="container2"></div>
-            <div id="slider-container2">
-                <input type="range" id="time-slider2" min="0" max="100" value="0" step="1">
-                <span id="date-label2"></span>
-            </div>
-            <div id="dashboard2">
-                <h3>Área Total Visible</h3>
-                <p id="area-value2">0 m²</p>
-            </div>
-        </div>
-    </div>
-    <button id="toggle-button">Comparar Modelos</button>
-
     <script type="module">
-        import * as THREE from 'three';
-        import { IFCLoader } from 'web-ifc-three/IFCLoader.js';
+        import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
+        import { IFCLoader } from 'https://cdn.skypack.dev/web-ifc-three@0.0.38';
 
         const scene1 = new THREE.Scene();
         const camera1 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -242,5 +206,22 @@
             camera2.updateProjectionMatrix();
         });
     </script>
+</head>
+<body>
+    <button id="toggle-button">Comparar Modelos</button>
+    <div id="viewers-container">
+        <div id="viewer1" class="viewer"></div>
+        <div id="viewer2" class="viewer"></div>
+    </div>
+    <div id="slider-container1">
+        <div id="date-label1">N/A</div>
+        <input type="range" id="time-slider1" min="0" max="100" step="1" value="0">
+        <div id="area-value1">0 m²</div>
+    </div>
+    <div id="slider-container2">
+        <div id="date-label2">N/A</div>
+        <input type="range" id="time-slider2" min="0" max="100" step="1" value="0">
+        <div id="area-value2">0 m²</div>
+    </div>
 </body>
 </html>
