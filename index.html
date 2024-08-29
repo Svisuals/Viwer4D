@@ -54,6 +54,14 @@
             cursor: pointer;
         }
     </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.skypack.dev/three@0.150.1",
+                "web-ifc-three": "https://cdn.skypack.dev/web-ifc-three@0.0.38"
+            }
+        }
+    </script>
 </head>
 <body>
     <div id="viewers-container">
@@ -83,8 +91,8 @@
     <button id="toggle-button">Comparar Modelos</button>
 
     <script type="module">
-        import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
-        import { IFCLoader } from 'https://cdn.skypack.dev/web-ifc-three/IFCLoader.js';
+        import * as THREE from 'three';
+        import { IFCLoader } from 'web-ifc-three/IFCLoader.js';
 
         // Configuración de la escena, cámara, renderizador e iluminación para los dos visualizadores
         const scene1 = new THREE.Scene();
