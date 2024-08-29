@@ -3,107 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IFC 4D Viewer</title>
+    <title>IFC 4D Viewer with Dual Comparison</title>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        #infoPanel {
+        body { margin: 0; overflow: hidden; display: flex; flex-direction: column; }
+        #viewers-container { 
+            display: flex; 
+            width: 100%; 
+            height: 100vh; 
+            transition: 0.5s ease-in-out; 
+        }
+        .viewer { 
+            flex: 1; 
+            position: relative; 
+        }
+        #slider-container {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%; 
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        #date-label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #dashboard {
             position: absolute;
             top: 10px;
             right: 10px;
-            width: 250px;
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
             padding: 10px;
+            border-radius: 10px;
+            width: 200px;
+            text-align: right;
+        }
+        #toggle-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
             border-radius: 5px;
-            display: none; /* Initially hidden */
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div id="infoPanel">
-        <h3>Element Info</h3>
-        <p id="elementInfo">Select an element to see details.</p>
+    <div id="viewers-container">
+        <div class="viewer" id="viewer1">
+            <div id="container1"></div>
+            <div id="slider-container1">
+                <input type="range" id="time-slider1" min="0" max="100" value="0" step="1">
+                <span id="date-label1"></span>
+            </div>
+            <div id="dashboard1">
+                <h3>Área Total Visible</h3>
+                <p id="area-value1">0 m²</p>
+            </div>
+        </div>
+        <div class="viewer" id="viewer2" style="display: none;">
+            <div id="container2"></div>
+            <div id="slider-container2">
+                <input type="range" id="time-slider2" min="0" max="100" value="0" step="1">
+                <span id="date-label2"></span>
+            </div>
+            <div id="dashboard2">
+                <h3>Área Total Visible</h3>
+                <p id="area-value2">0 m²</p>
+            </div>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.143.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ifcjs@0.0.60/dist/ifc.min.js"></script>
-    <script>
-        // Configuración básica de Three.js
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+    <button id="toggle-button">Comparar Modelos</button>
 
-        // Añadir una luz ambiental
-        const ambientLight = new THREE.AmbientLight(0x404040, 2); // luz suave
-        scene.add(ambientLight);
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
+        import { IFCLoader } from 'https://cdn.skypack.dev/web-ifc-three/IFCLoader.js';
 
-        // Añadir una luz direccional para sombras y resaltado
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(1, 1, 0.5).normalize();
-        scene.add(directionalLight);
+        // Configuración de la escena, cámara, renderizador e iluminación para los dos visualizadores
+        const scene1 = new THREE.Scene();
+        const camera1 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer1 = new THREE.WebGLRenderer({ antialias: true });
+        renderer1.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container1').appendChild(renderer1.domElement);
 
-        // Configurar la cámara
-        camera.position.z = 10;
+        const scene2 = new THREE.Scene();
+        const camera2 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer2 = new THREE.WebGLRenderer({ antialias: true });
+        renderer2.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container2').appendChild(renderer2.domElement);
 
-        // Cargar el archivo IFC
-        const loader = new IFC.Loader();
-        let model;
+        camera1.position.z = 10;
+        camera2.position.z = 10;
 
-        loader.load('Modelo4D.ifc', async function (ifcModel) {
-            model = ifcModel;
-            scene.add(model);
+        // Añadir iluminación a las escenas
+        const light1 = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiental
+        scene1.add(light1);
+        const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight1.position.set(10, 10, 10).normalize();
+        scene1.add(directionalLight1);
 
-            // Procesar el IFC para extraer datos personalizados
-            await parseIFCData(model);
+        const light2 = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiental
+        scene2.add(light2);
+        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight2.position.set(10, 10, 10).normalize();
+        scene2.add(directionalLight2);
 
-            // Renderizar la escena
-            animate();
+        // Cargar los dos modelos IFC desde la misma carpeta que el HTML
+        const ifcLoader1 = new IFCLoader();
+        const ifcLoader2 = new IFCLoader();
+        ifcLoader1.ifcManager.setWasmPath("https://unpkg.com/web-ifc@0.0.38/");
+        ifcLoader2.ifcManager.setWasmPath("https://unpkg.com/web-ifc@0.0.38/");
+
+        let elementsByDate1, elementsByDate2;
+
+        // Cargar el primer modelo IFC
+        ifcLoader1.load('Modelo4D.ifc', async (ifcModel) => {
+            scene1.add(ifcModel.mesh);
+            await ifcLoader1.ifcManager.parser.setupOptionalCategories();
+            elementsByDate1 = await extract4DElements(ifcModel, ifcLoader1);
+            setupSlider(elementsByDate1, 1);
         });
 
-        async function parseIFCData(model) {
-            const ifcManager = loader.ifcManager;
+        // Cargar el segundo modelo IFC (para comparación)
+        ifcLoader2.load('Modelo4D.ifc', async (ifcModel) => {  // Cambia esta ruta si usas un segundo modelo diferente
+            scene2.add(ifcModel.mesh);
+            await ifcLoader2.ifcManager.parser.setupOptionalCategories();
+            elementsByDate2 = await extract4DElements(ifcModel, ifcLoader2);
+            setupSlider(elementsByDate2, 2);
+        });
 
-            // Recorre los elementos del modelo
-            for (const mesh of model.children) {
-                if (mesh.isMesh) {
-                    const expressID = mesh.userData.ifcId;
-                    const customData = await getCustomData(ifcManager, expressID);
-                    if (customData) {
-                        mesh.userData = { date: customData };
-                        console.log(`Elemento ID ${expressID} - My_Data: ${customData}`);
-                    }
+        // Función para extraer y organizar los elementos IFC en base a la fecha
+        async function extract4DElements(ifcModel, ifcLoader) {
+            const elementsByDate = {};
+            const allItems = ifcModel.mesh.geometry.attributes.expressID.array;
+
+            for (let i = 0; i < allItems.length; i++) {
+                const expressID = allItems[i];
+                const properties = await ifcLoader.ifcManager.getItemProperties(0, expressID);
+
+                const date = await get4DDateForElement(properties, expressID, ifcLoader);
+
+                if (date) {
+                    const area = calculateArea(properties);
+
+                    if (!elementsByDate[date]) elementsByDate[date] = { elements: [], totalArea: 0 };
+                    elementsByDate[date].elements.push(ifcModel.mesh.getObjectById(expressID));
+                    elementsByDate[date].totalArea += area;
+                    ifcModel.mesh.getObjectById(expressID).visible = false;
                 }
             }
+
+            return elementsByDate;
         }
 
-        async function getCustomData(ifcManager, expressID) {
-            const propertySets = await ifcManager.getPropertySets(expressID);
-            for (const propSet of propertySets) {
-                if (propSet.Name.value === "My_Data") {
-                    for (const prop of propSet.HasProperties) {
-                        const propName = await ifcManager.getItemProperty(prop.value, 'Name');
-                        if (propName.value === 'DATA') {
-                            const dateValue = await ifcManager.getItemProperty(prop.value, 'NominalValue');
-                            return dateValue.value;
-                        }
-                    }
+        // Función para obtener la fecha 4D de un elemento (basada en propiedades IFC)
+        async function get4DDateForElement(properties, expressID, ifcLoader) {
+            const propertySets = await ifcLoader.ifcManager.getPropertySets(0, expressID);
+
+            // Buscar el Property Set específico llamado 'MyData'
+            const myDataSet = propertySets.find(set => set.Name.value === 'MyData');
+
+            if (myDataSet) {
+                // Encontrar la propiedad 'DATA' dentro del Property Set 'MyData'
+                const dateProperty = myDataSet.HasProperties.find(prop => prop.Name.value === 'DATA');
+
+                if (dateProperty && dateProperty.NominalValue) {
+                    const dateValue = dateProperty.NominalValue.value;
+                    return new Date(dateValue).toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
                 }
             }
+
             return null;
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
+        // Función para calcular el área de un elemento (ejemplo básico)
+        function calculateArea(properties) {
+            const areaProperty = properties["AreaProperty"]; // Reemplaza con la propiedad real si existe
+            return areaProperty ? parseFloat(areaProperty.value) : 0;
         }
 
-        // Manejar el cambio de tamaño de la ventana
-        window.addEventListener('resize', function () {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // Configurar el slider para controlar la visualización basada en la fecha
+        function setupSlider(elementsByDate, viewerId) {
+            const dates = Object.keys(elementsByDate).sort();
+            const slider = document.getElementById(`time-slider${viewerId}`);
+            const dateLabel = document.getElementById(`date-label${viewerId}`);
+            const areaValue = document.getElementById(`area-value${viewerId}`);
+
+            slider.max = dates.length - 1;
+            slider.addEventListener('input', (event) => {
+                const index = event.target.value;
+                const currentDate = dates[index];
+                dateLabel.textContent = currentDate;
+
+                let totalArea = 0;
+                dates.forEach((date, i) => {
+                    elementsByDate[date].elements.forEach(element => {
+                        element.visible = i <= index;
+                    });
+                    if (i <= index) {
+                        totalArea += elementsByDate[date].totalArea;
+                    }
+                });
+
+                areaValue.textContent = `${totalArea.toFixed(2)} m²`;
+
+                // Sincronizar ambos sliders si la vista paralela está activa
+                if (viewerId === 1) {
+                    document.getElementById('time-slider2').value = index;
+                    document.getElementById('time-slider2').dispatchEvent(new Event('input'));
+                } else if (viewerId === 2) {
+                    document.getElementById('time-slider1').value = index;
+                    document.getElementById('time-slider1').dispatchEvent(new Event('input'));
+                }
+            });
+
+            dateLabel.textContent = dates[0];
+            areaValue.textContent = `0 m²`;
+        }
+
+        // Función para alternar la vista en paralelo
+        document.getElementById('toggle-button').addEventListener('click', () => {
+            const viewer2 = document.getElementById('viewer2');
+            if (viewer2.style.display === 'none') {
+                viewer2.style.display = 'block';
+                document.getElementById('viewers-container').style.flexDirection = 'row';
+                document.getElementById('viewer1').style.flex = '1';
+                viewer2.style.flex = '1';
+                renderer1.setSize(window.innerWidth / 2, window.innerHeight);
+                renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+            } else {
+                viewer2.style.display = 'none';
+                document.getElementById('viewers-container').style.flexDirection = 'column';
+                renderer1.setSize(window.innerWidth, window.innerHeight);
+            }
         });
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer1.render(scene1, camera1);
+            if (document.getElementById('viewer2').style.display !== 'none') {
+                renderer2.render(scene2, camera2);
+            }
+        }
+
+        animate();
     </script>
 </body>
 </html>
