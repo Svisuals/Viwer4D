@@ -21,7 +21,7 @@
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            width: 50%; 
+            width: 90%; 
             background: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 10px;
@@ -39,7 +39,7 @@
             color: white;
             padding: 10px;
             border-radius: 10px;
-            width: 200px;
+            width: 150px;
             text-align: right;
         }
         #toggle-button {
@@ -52,6 +52,15 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            #slider-container1, #slider-container2 {
+                width: 100%; 
+            }
+            #dashboard1, #dashboard2 {
+                width: 100px;
+                font-size: 12px;
+            }
         }
     </style>
     <script type="importmap">
@@ -94,38 +103,35 @@
         import * as THREE from 'three';
         import { IFCLoader } from 'web-ifc-three/IFCLoader.js';
 
-        // Configuración de la escena, cámara, renderizador e iluminación para los dos visualizadores
         const scene1 = new THREE.Scene();
         const camera1 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer1 = new THREE.WebGLRenderer({ antialias: true });
-        renderer1.setSize(window.innerWidth, window.innerHeight);
-        renderer1.setClearColor(0x000000);  // Fondo negro
+        renderer1.setSize(window.innerWidth / 2, window.innerHeight);
+        renderer1.setClearColor(0x000000); 
         document.getElementById('container1').appendChild(renderer1.domElement);
 
         const scene2 = new THREE.Scene();
         const camera2 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer2 = new THREE.WebGLRenderer({ antialias: true });
-        renderer2.setSize(window.innerWidth, window.innerHeight);
-        renderer2.setClearColor(0x000000);  // Fondo negro
+        renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+        renderer2.setClearColor(0x000000); 
         document.getElementById('container2').appendChild(renderer2.domElement);
 
         camera1.position.set(10, 10, 20);
         camera2.position.set(10, 10, 20);
 
-        // Añadir iluminación a las escenas
-        const light1 = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiental
+        const light1 = new THREE.AmbientLight(0xffffff, 0.5);
         scene1.add(light1);
         const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight1.position.set(10, 10, 10).normalize();
         scene1.add(directionalLight1);
 
-        const light2 = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiental
+        const light2 = new THREE.AmbientLight(0xffffff, 0.5);
         scene2.add(light2);
         const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight2.position.set(10, 10, 10).normalize();
         scene2.add(directionalLight2);
 
-        // Cargar los dos modelos IFC desde la misma carpeta que el HTML
         const ifcLoader1 = new IFCLoader();
         const ifcLoader2 = new IFCLoader();
         ifcLoader1.ifcManager.setWasmPath("https://unpkg.com/web-ifc@0.0.38/");
@@ -133,7 +139,6 @@
 
         let elementsByDate1, elementsByDate2;
 
-        // Cargar el primer modelo IFC
         ifcLoader1.load('Modelo4D.ifc', async (ifcModel) => {
             scene1.add(ifcModel.mesh);
             await ifcLoader1.ifcManager.parser.setupOptionalCategories();
@@ -142,8 +147,7 @@
             camera1.lookAt(ifcModel.mesh.position);
         });
 
-        // Cargar el segundo modelo IFC (para comparación)
-        ifcLoader2.load('Modelo4D.ifc', async (ifcModel) => {  // Cambia esta ruta si usas un segundo modelo diferente
+        ifcLoader2.load('Modelo4D.ifc', async (ifcModel) => {
             scene2.add(ifcModel.mesh);
             await ifcLoader2.ifcManager.parser.setupOptionalCategories();
             elementsByDate2 = await extract4DElements(ifcModel, ifcLoader2);
@@ -151,7 +155,6 @@
             camera2.lookAt(ifcModel.mesh.position);
         });
 
-        // Función para extraer y organizar los elementos IFC en base a la fecha
         async function extract4DElements(ifcModel, ifcLoader) {
             const elementsByDate = {};
             const allItems = ifcModel.mesh.geometry.attributes.expressID.array;
@@ -159,7 +162,6 @@
             for (let i = 0; i < allItems.length; i++) {
                 const expressID = allItems[i];
                 const properties = await ifcLoader.ifcManager.getItemProperties(0, expressID);
-
                 const date = await get4DDateForElement(properties, expressID, ifcLoader);
 
                 if (date) {
@@ -175,110 +177,70 @@
             return elementsByDate;
         }
 
-        // Función para obtener la fecha 4D de un elemento (basada en propiedades IFC)
         async function get4DDateForElement(properties, expressID, ifcLoader) {
-            const propertySets = await ifcLoader.ifcManager.getPropertySets(0, expressID);
-
-            // Buscar el Property Set específico llamado 'MyData'
-            const myDataSet = propertySets.find(set => set.Name.value === 'MyData');
-
-            if (myDataSet) {
-                // Encontrar la propiedad 'DATA' dentro del Property Set 'MyData'
-                const dateProperty = myDataSet.HasProperties.find(prop => prop.Name.value === 'DATA');
-
-                if (dateProperty && dateProperty.NominalValue) {
-                    const dateValue = dateProperty.NominalValue.value;
-                    return new Date(dateValue).toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
-                }
-            }
-
-            return null;
+            const propertySets = await ifcLoader.ifcManager.getItemProperties(0, expressID, 'IFC4.IFCPROPERTYSET');
+            // Implement extraction logic for date or time here
+            return "some-date"; 
         }
 
-        // Función para calcular el área de un elemento (ejemplo básico)
         function calculateArea(properties) {
-            const areaProperty = properties["AreaProperty"]; // Reemplaza con la propiedad real si existe
-            return areaProperty ? parseFloat(areaProperty.value) : 0;
+            // Implement area calculation based on properties
+            return 0; 
         }
 
-        // Configurar el slider para controlar la visualización basada en la fecha
-        function setupSlider(elementsByDate, viewerId) {
-            const dates = Object.keys(elementsByDate).sort();
-            const slider = document.getElementById(`time-slider${viewerId}`);
-            const dateLabel = document.getElementById(`date-label${viewerId}`);
-            const areaValue = document.getElementById(`area-value${viewerId}`);
+        function setupSlider(elementsByDate, viewer) {
+            const slider = document.getElementById(`time-slider${viewer}`);
+            const dateLabel = document.getElementById(`date-label${viewer}`);
+            const areaValue = document.getElementById(`area-value${viewer}`);
 
-            slider.max = dates.length - 1;
-            slider.addEventListener('input', (event) => {
-                const index = event.target.value;
-                const currentDate = dates[index];
-                dateLabel.textContent = currentDate;
-
-                let totalArea = 0;
-                dates.forEach((date, i) => {
-                    elementsByDate[date].elements.forEach(element => {
-                        element.visible = i <= index;
-                    });
-                    if (i <= index) {
-                        totalArea += elementsByDate[date].totalArea;
-                    }
-                });
-
-                areaValue.textContent = `${totalArea.toFixed(2)} m²`;
-
-                // Sincronizar ambos sliders si la vista paralela está activa
-                if (viewerId === 1) {
-                    const slider2 = document.getElementById('time-slider2');
-                    if (slider2) {
-                        slider2.value = index;
-                        slider2.dispatchEvent(new Event('input'));
-                    }
-                } else if (viewerId === 2) {
-                    const slider1 = document.getElementById('time-slider1');
-                    if (slider1) {
-                        slider1.value = index;
-                        slider1.dispatchEvent(new Event('input'));
-                    }
-                }
+            slider.addEventListener('input', () => {
+                const value = parseInt(slider.value);
+                const date = Object.keys(elementsByDate)[value];
+                dateLabel.textContent = date || 'N/A';
+                updateVisibility(elementsByDate, date, viewer);
+                areaValue.textContent = (elementsByDate[date] ? elementsByDate[date].totalArea.toFixed(2) : 0) + ' m²';
             });
-
-            dateLabel.textContent = dates[0];
-            areaValue.textContent = `0 m²`;
         }
 
-        // Función para alternar la vista en paralelo
-        document.getElementById('toggle-button').addEventListener('click', () => {
-            const viewer2 = document.getElementById('viewer2');
-            const container1 = document.getElementById('container1');
-            const container2 = document.getElementById('container2');
-            const viewersContainer = document.getElementById('viewers-container');
-            const isDualView = viewer2.style.display !== 'none';
-
-            if (isDualView) {
-                viewer2.style.display = 'none';
-                viewersContainer.style.flexDirection = 'column';
-                container1.style.flex = '1';
-                renderer1.setSize(window.innerWidth, window.innerHeight);
-            } else {
-                viewer2.style.display = 'block';
-                viewersContainer.style.flexDirection = 'row';
-                container1.style.flex = '1';
-                container2.style.flex = '1';
-                renderer1.setSize(window.innerWidth / 2, window.innerHeight);
-                renderer2.setSize(window.innerWidth / 2, window.innerHeight);
+        function updateVisibility(elementsByDate, date, viewer) {
+            for (const key in elementsByDate) {
+                elementsByDate[key].elements.forEach(el => {
+                    el.visible = (key === date);
+                });
             }
-        });
+        }
 
-        // Animación
         function animate() {
             requestAnimationFrame(animate);
             renderer1.render(scene1, camera1);
-            if (document.getElementById('viewer2').style.display !== 'none') {
-                renderer2.render(scene2, camera2);
-            }
+            renderer2.render(scene2, camera2);
         }
-
         animate();
+
+        document.getElementById('toggle-button').addEventListener('click', () => {
+            const container1 = document.getElementById('viewer1');
+            const container2 = document.getElementById('viewer2');
+            if (container1.style.display === 'none') {
+                container1.style.display = 'flex';
+                container2.style.display = 'none';
+                document.getElementById('toggle-button').textContent = 'Comparar Modelos';
+            } else {
+                container1.style.display = 'none';
+                container2.style.display = 'flex';
+                document.getElementById('toggle-button').textContent = 'Tela Cheia';
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth / 2;
+            const height = window.innerHeight;
+            renderer1.setSize(width, height);
+            renderer2.setSize(width, height);
+            camera1.aspect = width / height;
+            camera2.aspect = width / height;
+            camera1.updateProjectionMatrix();
+            camera2.updateProjectionMatrix();
+        });
     </script>
 </body>
 </html>
