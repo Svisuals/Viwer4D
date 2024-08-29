@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IFC 4D Viewer with Dual Comparison</title>
     <style>
-        body { margin: 0; overflow: hidden; display: flex; flex-direction: column; }
+        body { margin: 0; overflow: hidden; display: flex; flex-direction: column; background-color: #000; }
         #viewers-container { 
             display: flex; 
             width: 100%; 
@@ -16,7 +16,7 @@
             flex: 1; 
             position: relative; 
         }
-        #slider-container {
+        #slider-container1, #slider-container2 {
             position: absolute;
             bottom: 10px;
             left: 50%;
@@ -27,11 +27,11 @@
             border-radius: 10px;
             text-align: center;
         }
-        #date-label {
+        #date-label1, #date-label2 {
             display: block;
             margin-bottom: 10px;
         }
-        #dashboard {
+        #dashboard1, #dashboard2 {
             position: absolute;
             top: 10px;
             right: 10px;
@@ -91,16 +91,18 @@
         const camera1 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer1 = new THREE.WebGLRenderer({ antialias: true });
         renderer1.setSize(window.innerWidth, window.innerHeight);
+        renderer1.setClearColor(0x000000);  // Fondo negro
         document.getElementById('container1').appendChild(renderer1.domElement);
 
         const scene2 = new THREE.Scene();
         const camera2 = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer2 = new THREE.WebGLRenderer({ antialias: true });
         renderer2.setSize(window.innerWidth, window.innerHeight);
+        renderer2.setClearColor(0x000000);  // Fondo negro
         document.getElementById('container2').appendChild(renderer2.domElement);
 
-        camera1.position.z = 10;
-        camera2.position.z = 10;
+        camera1.position.set(10, 10, 20);
+        camera2.position.set(10, 10, 20);
 
         // Añadir iluminación a las escenas
         const light1 = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiental
@@ -129,6 +131,7 @@
             await ifcLoader1.ifcManager.parser.setupOptionalCategories();
             elementsByDate1 = await extract4DElements(ifcModel, ifcLoader1);
             setupSlider(elementsByDate1, 1);
+            camera1.lookAt(ifcModel.mesh.position);
         });
 
         // Cargar el segundo modelo IFC (para comparación)
@@ -137,6 +140,7 @@
             await ifcLoader2.ifcManager.parser.setupOptionalCategories();
             elementsByDate2 = await extract4DElements(ifcModel, ifcLoader2);
             setupSlider(elementsByDate2, 2);
+            camera2.lookAt(ifcModel.mesh.position);
         });
 
         // Función para extraer y organizar los elementos IFC en base a la fecha
@@ -216,11 +220,17 @@
 
                 // Sincronizar ambos sliders si la vista paralela está activa
                 if (viewerId === 1) {
-                    document.getElementById('time-slider2').value = index;
-                    document.getElementById('time-slider2').dispatchEvent(new Event('input'));
+                    const slider2 = document.getElementById('time-slider2');
+                    if (slider2) {
+                        slider2.value = index;
+                        slider2.dispatchEvent(new Event('input'));
+                    }
                 } else if (viewerId === 2) {
-                    document.getElementById('time-slider1').value = index;
-                    document.getElementById('time-slider1').dispatchEvent(new Event('input'));
+                    const slider1 = document.getElementById('time-slider1');
+                    if (slider1) {
+                        slider1.value = index;
+                        slider1.dispatchEvent(new Event('input'));
+                    }
                 }
             });
 
@@ -231,17 +241,23 @@
         // Función para alternar la vista en paralelo
         document.getElementById('toggle-button').addEventListener('click', () => {
             const viewer2 = document.getElementById('viewer2');
-            if (viewer2.style.display === 'none') {
+            const container1 = document.getElementById('container1');
+            const container2 = document.getElementById('container2');
+            const viewersContainer = document.getElementById('viewers-container');
+            const isDualView = viewer2.style.display !== 'none';
+
+            if (isDualView) {
+                viewer2.style.display = 'none';
+                viewersContainer.style.flexDirection = 'column';
+                container1.style.flex = '1';
+                renderer1.setSize(window.innerWidth, window.innerHeight);
+            } else {
                 viewer2.style.display = 'block';
-                document.getElementById('viewers-container').style.flexDirection = 'row';
-                document.getElementById('viewer1').style.flex = '1';
-                viewer2.style.flex = '1';
+                viewersContainer.style.flexDirection = 'row';
+                container1.style.flex = '1';
+                container2.style.flex = '1';
                 renderer1.setSize(window.innerWidth / 2, window.innerHeight);
                 renderer2.setSize(window.innerWidth / 2, window.innerHeight);
-            } else {
-                viewer2.style.display = 'none';
-                document.getElementById('viewers-container').style.flexDirection = 'column';
-                renderer1.setSize(window.innerWidth, window.innerHeight);
             }
         });
 
