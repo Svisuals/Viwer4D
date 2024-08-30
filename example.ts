@@ -1,25 +1,26 @@
 /* MD
-### 🧊 Playing with boxes
+### 🏢 Loading IFC files
 ---
 
-In this tutorial, you'll learn to easily create the bounding boxes of a BIM model. This can be useful for knowing the overall position and dimension of your models, which can be used, for instance, to make the camera fit a whole BIM model in the screen.
+IFC is the most common format to share BIM data openly. Our libraries are able to load, navigate and even create and edit them directly. In this tutorial, you'll learn how to open an IFC model in the 3D scene.
 
-:::tip Bounding boxes?
+:::tip IFC?
 
-Bounding boxes (AABB or Axis-Aligned Bounding Boxes) are the boxes aligned with the X, Y and Z axes of a 3D model that contain one or many objects. They are very common in 3D applications to make fast computations that require to know the whole dimension or position of one or many objects.
+If you are not famliar with the construction industry, this might be the first time you come across this term. It stands for Industry Foundation Classes, and it's the most widespread standard for sharing BIM data freely, without depending on specific software manufacturers and their propietary formats.
 
 :::
 
 In this tutorial, we will import:
 
+- `web-ifc` to get some IFC items.
+- `@thatopen/ui` to add some simple and cool UI menus.
 - `@thatopen/components` to set up the barebone of our app.
 - `Stats.js` (optional) to measure the performance of our app.
-- `@thatopen/ui` to add some simple and cool UI menus.
-
 */
 
-import Stats from "stats.js";
+import * as WEBIFC from "web-ifc";
 import * as BUI from "@thatopen/ui";
+import Stats from "stats.js";
 import * as OBC from "@thatopen/components";
 
 /* MD
@@ -27,7 +28,6 @@ import * as OBC from "@thatopen/components";
   ---
 
   We will start by creating a simple scene with a camera and a renderer. If you don't know how to set up a scene, you can check the Worlds tutorial.
-
 */
 
 const container = document.getElementById("container")!;
@@ -64,58 +64,142 @@ grids.create(world);
 world.scene.three.background = null;
 
 /* MD
-  ### 🧳 Loading a BIM model
+  ### 🚗🏎️ Getting IFC and fragments
   ---
-
- We'll start by adding a BIM model to our scene. That model is already converted to fragments, so it will load much faster than if we loaded the IFC file.
-
-  :::tip Fragments?
-
-    If you are not familiar with fragments, check out the IfcLoader tutorial!
-
-  :::
-*/
+  When we read an IFC file, we convert it to a geometry called Fragments. Fragments are a lightweight representation of geometry built on top of THREE.js `InstancedMesh` to make it easy to work with BIM data efficiently. All the BIM geometry you see in our libraries are Fragments, and they are great: they are lightweight, they are fast and we have tons of tools to work with them. But fragments are not used outside our libraries. So how can we convert an IFC file to fragments? Let's check out how:
+  */
 
 const fragments = components.get(OBC.FragmentsManager);
-const file = await fetch(
-  "https://thatopen.github.io/engine_components/resources/small.frag",
-);
-const data = await file.arrayBuffer();
-const buffer = new Uint8Array(data);
-const model = fragments.load(buffer);
-world.scene.three.add(model);
+const fragmentIfcLoader = components.get(OBC.IfcLoader);
 
 /* MD
-  ### 🎲 Creation of Bounding Boxes
+  :::info Why not just IFC?
+
+  IFC is nice because it lets us exchange data with many tools in the AECO industry. But your graphics card doesn't understand IFC. It only understands one thing: triangles. So we must convert IFC to triangles. There are many ways to do it, some more efficient than others. And that's exactly what Fragments are: a very efficient way to display the triangles coming from IFC files. 
+
+  :::
+
+  Once Fragments have been generated, you can export them and then load them back directly, without needing the original IFC file. Why would you do that? Well, because fragments can load +10 times faster than IFC. And the reason is very simple.   When reading an IFC, we must parse the file, read the implicit geometry, convert it to triangles (Fragments) and send it to the GPU. When reading fragments, we just take the triangles and send them, so it's super fast. 
+
+  :::danger How to use Fragments?
+
+  If you want to find out more about Fragments, check out the Fragments Manager tutorial.
+
+  :::
+
+
+  ### 🔭🔧 Calibrating the converter
   ---
+  Now, we need to configure the path of the WASM files. What's WASM? It's a technology that lets us run C++ on the browser, which means that we can load IFCs super fast! These files are the compilation of our `web-ifc` library. You can find them in the github repo and in NPM. These files need to be available to our app, so you have 2 options:
 
-  Now that our setup is done, lets see how you can create the bounding boxes of the model.
+  - Download them and serve them statically.
+  - Get them from a remote server.
 
-  BIM models are complex, but don't worry: creating the [bounding boxes](https://threejs.org/docs/?q=bound#api/en/math/Box3) is a piece of cake thanks to the `BoundingBoxer`.💪
+  The easiest way is getting them from unpkg, and the cool thing is that you don't need to do it manually! It can be done directly by the tool just by writing the following:
+  */
 
-  We can add models to the computation of the bounding box simply by using the `add()` method.
+await fragmentIfcLoader.setup();
+
+// If you want to the path to unpkg manually, then you can skip the line
+// above and set them manually as below:
+// fragmentIfcLoader.settings.wasm = {
+//   path: "https://unpkg.com/web-ifc@0.0.57/",
+//   absolute: true,
+// };
+
+/* MD
+  Awesome! Optionally, we can exclude categories that we don't want to convert to fragments like very easily:
 */
 
-const fragmentBbox = components.get(OBC.BoundingBoxer);
-fragmentBbox.add(model);
+const excludedCats = [
+  WEBIFC.IFCTENDONANCHOR,
+  WEBIFC.IFCREINFORCINGBAR,
+  WEBIFC.IFCREINFORCINGELEMENT,
+];
+
+for (const cat of excludedCats) {
+  fragmentIfcLoader.settings.excludedCategories.add(cat);
+}
 
 /* MD
+  We can further configure the conversion using the `webIfc` object. In this example, we will make the IFC model go to the origin of the scene (don't worry, this supports model federation):
+  */
 
-  #### 👓 Reading the Bounding Box data
+fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
 
-  After adding the model, we can now read the mesh from bounding box using `getMesh()` method. 
-  
-  :::tip Don't forget to clean up after using it! 🧹
+/* MD
+  ### 🚗🔥 Loading the IFC
+  ---
+  Next, let's define a function to load the IFC programmatically. We have hardcoded the path to one of our IFC files, but feel free to do this with any of your own files!
 
-  It's a good practice to reset the bounding box after using it with the `reset()` method. Otherwise, if you add more models or meshes to the bounding boxer, the bounding box will compute a bounding box that includes everything (including the previously added models).
+ :::info Opening local IFCs
+
+  Keep in mind that the browser can't access the file of your computer directly, so you will need to use the Open File API to open local files.
 
   :::
 */
 
-const bbox = fragmentBbox.getMesh();
-fragmentBbox.reset();
+async function loadIfc() {
+  const file = await fetch(
+    "https://thatopen.github.io/engine_components/resources/small.ifc",
+  );
+  const data = await file.arrayBuffer();
+  const buffer = new Uint8Array(data);
+  const model = await fragmentIfcLoader.load(buffer);
+  model.name = "example";
+  world.scene.three.add(model);
+}
 
 /* MD
+  If you want to get the resulted model every time a new model is loaded, you can subscribe to the following event anywhere in your app:
+*/
+
+fragments.onFragmentsLoaded.add((model) => {
+  console.log(model);
+});
+
+/* MD
+  ### 🎁 Exporting the result to fragments
+  ---
+  Once you have your precious fragments, you might want to save them so that you don't need to open this IFC file each time your user gets into your app. Instead, the next time you can load the fragments directly. Defining a function to export fragments is as easy as this:
+*/
+
+function download(file: File) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(file);
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+async function exportFragments() {
+  if (!fragments.groups.size) {
+    return;
+  }
+  const group = Array.from(fragments.groups.values())[0];
+  const data = fragments.export(group);
+  download(new File([new Blob([data])], "small.frag"));
+
+  const properties = group.getLocalProperties();
+  if (properties) {
+    download(new File([JSON.stringify(properties)], "small.json"));
+  }
+}
+
+/* MD
+  ### 🧠🧼 Cleaning memory
+  ---
+  Now, just like in the `FragmentManager` tutorial, you will need to dispose the memory if your user wants to reset the state of the scene, especially if you are using Single Page Application technologies like React, Angular, Vue, etc. To do that, you can simply call the `dispose` method:
+*/
+
+function disposeFragments() {
+  fragments.dispose();
+}
+
+/* MD
+  That's it! Congrats, now you can load IFC files into your app, generate the 3D geometry and property data for them and navigate them in 3D. In other tutorials, you'll find tons of tools to work with them and create amazing BIM apps! See you there. 💪
+
   ### ⏱️ Measuring the performance (optional)
   ---
 
@@ -140,24 +224,37 @@ world.renderer.onAfterUpdate.add(() => stats.end());
 BUI.Manager.init();
 
 /* MD
-  Now we will create a new panel with an input to make the camera fit the model to the screen. For more information about the UI library, you can check the specific documentation for it!
+Now we will add some UI to explode and restore our BIM model, which can be easily done with a checkbox that determines whether a model is exploded or not. For more information about the UI library, you can check the specific documentation for it!
 */
 
 const panel = BUI.Component.create<BUI.PanelSection>(() => {
   return BUI.html`
-    <bim-panel active label="Bounding Boxes Tutorial" class="options-menu">
-      <bim-panel-section collapsed label="Controls">
-         
-        <bim-button 
-          label="Fit BIM model" 
+  <bim-panel active label="IFC Loader Tutorial" class="options-menu">
+    <bim-panel-section collapsed label="Controls">
+      <bim-panel-section style="padding-top: 12px;">
+      
+        <bim-button label="Load IFC"
           @click="${() => {
-            world.camera.controls.fitToSphere(bbox, true);
-          }}">  
+            loadIfc();
+          }}">
         </bim-button>  
-
+            
+        <bim-button label="Export fragments"
+          @click="${() => {
+            exportFragments();
+          }}">
+        </bim-button>  
+            
+        <bim-button label="Dispose fragments"
+          @click="${() => {
+            disposeFragments();
+          }}">
+        </bim-button>
+      
       </bim-panel-section>
+      
     </bim-panel>
-    `;
+  `;
 });
 
 document.body.append(panel);
@@ -183,10 +280,8 @@ const button = BUI.Component.create<BUI.PanelSection>(() => {
 document.body.append(button);
 
 /* MD
-
   ### 🎉 Wrap up
   ---
 
-  That's it! You have created the bounding box of a BIM model and used it to make the camera fit the model to the screen. This also works with many models!
-
-  */
+  That's it! You have created an app that can load IFC files, convert them to 3D fragments and navigate them in 3D. Fantastic job! For bigger IFC files, instead of reading them directly every time, you can store the fragments and properties and load them instead of the original IFC. For even bigger files, you can use streaming, which we also cover in other tutorials!
+*/
