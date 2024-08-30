@@ -1,112 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My 3D Scene</title>
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="icon" type="image/x-icon" href="https://thatopen.github.io/engine_components/resources/favicon.ico">
+  <title>BoundingBoxer</title>
   <style>
-    body { margin: 0; }
-    #container { width: 100vw; height: 100vh; }
-    .options-menu { position: absolute; top: 0; right: 0; }
-    .phone-menu-toggler { position: absolute; top: 10px; right: 10px; }
+      body {
+          margin: 0;
+          padding: 0;
+          font-family: "Plus Jakarta Sans", sans-serif;
+          overflow: hidden;
+      }
+
+      .full-screen {
+          width: 100vw;
+          height: 100vh;
+          position: relative;
+          overflow: hidden;
+      }
+
+      .options-menu {
+          position: fixed;
+          min-width: unset;
+          top: 5px;
+          right: 5px;
+          max-height: calc(100vh - 10px);
+      }
+
+      .phone-menu-toggler {
+          visibility: hidden;
+      }
+
+      @media (max-width: 480px) {
+          .options-menu {
+              visibility: hidden;
+              bottom: 5px;
+              left: 5px;
+          }
+
+          .options-menu-visible {
+              visibility: visible;
+          }
+
+          .phone-menu-toggler {
+              visibility: visible;
+              position: fixed;
+              top: 5px;
+              right: 5px;
+          }
+      }
+
   </style>
 </head>
+
 <body>
-  <div id="container"></div>
-  <script type="module">
-    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.module.js";
-    import * as BUI from "https://cdn.jsdelivr.net/npm/@thatopen/ui@latest/dist/bui.min.js";
-    import * as OBC from "https://cdn.jsdelivr.net/npm/@thatopen/components@latest/dist/obc.min.js";
-    import Stats from "https://cdn.jsdelivr.net/npm/stats.js@latest/build/stats.min.js";
-
-    const container = document.getElementById("container");
-    const components = new OBC.Components();
-    const worlds = components.get(OBC.Worlds);
-
-    const world = worlds.create<
-      OBC.SimpleScene,
-      OBC.SimpleCamera,
-      OBC.SimpleRenderer
-    >();
-
-    world.scene = new OBC.SimpleScene(components);
-    world.renderer = new OBC.SimpleRenderer(components, container);
-    world.camera = new OBC.SimpleCamera(components);
-
-    components.init();
-
-    world.scene.three.background = null;
-
-    const material = new THREE.MeshLambertMaterial({ color: "#6528D7" });
-    const geometry = new THREE.BoxGeometry();
-    const cube = new THREE.Mesh(geometry, material);
-    world.scene.three.add(cube);
-
-    world.scene.setup();
-    world.camera.controls.setLookAt(3, 3, 3, 0, 0, 0);
-
-    const stats = new Stats();
-    stats.showPanel(2);
-    document.body.append(stats.dom);
-    stats.dom.style.left = "0px";
-    stats.dom.style.zIndex = "unset";
-    world.renderer.onBeforeUpdate.add(() => stats.begin());
-    world.renderer.onAfterUpdate.add(() => stats.end());
-
-    BUI.Manager.init();
-
-    const panel = BUI.Component.create<BUI.PanelSection>(() => {
-      return BUI.html`
-        <bim-panel label="Worlds Tutorial" class="options-menu">
-          <bim-panel-section collapsed label="Controls">
-            <bim-color-input 
-              label="Background Color" color="#202932" 
-              @input="${({ target }: { target: BUI.ColorInput }) => {
-                world.scene.three.background = new THREE.Color(target.color);
-              }}">
-            </bim-color-input>
-            <bim-number-input 
-              slider step="0.1" label="Directional lights intensity" value="1.5" min="0.1" max="10"
-              @change="${({ target }: { target: BUI.NumberInput }) => {
-                for (const child of world.scene.three.children) {
-                  if (child instanceof THREE.DirectionalLight) {
-                    child.intensity = target.value;
-                  }
-                }
-              }}">
-            </bim-number-input>
-            <bim-number-input 
-              slider step="0.1" label="Ambient light intensity" value="1" min="0.1" max="5"
-              @change="${({ target }: { target: BUI.NumberInput }) => {
-                for (const child of world.scene.three.children) {
-                  if (child instanceof THREE.AmbientLight) {
-                    child.intensity = target.value;
-                  }
-                }
-              }}">
-            </bim-number-input>
-          </bim-panel-section>
-        </bim-panel>
-      `;
-    });
-    
-    document.body.append(panel);
-
-    const button = BUI.Component.create<BUI.PanelSection>(() => {
-      return BUI.html`
-        <bim-button class="phone-menu-toggler" icon="solar:settings-bold"
-          @click="${() => {
-            if (panel.classList.contains("options-menu-visible")) {
-              panel.classList.remove("options-menu-visible");
-            } else {
-              panel.classList.add("options-menu-visible");
-            }
-          }}">
-        </bim-button>
-      `;
-    });
-    
-    document.body.append(button);
-  </script>
+<div class="full-screen" id="container"></div>
+<script type="module" src="./example.ts"></script>
 </body>
+
 </html>
